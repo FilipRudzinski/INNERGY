@@ -67,8 +67,10 @@ export function updateSelectedServices (
 
 function deselectDependentServices(previouslySelectedServices: ServiceType[], service: ServiceType, serviceDependencies : ServiceDependency[]) {
     let mainService = getMainService(service,serviceDependencies);
+    //If is main service then remove dependent sub-services
     if(mainService != null){
         mainService.dependentServices.forEach(value => {
+            //If service also depends on other main service then needs to stay
             if(needToRemoveDependentService(value, previouslySelectedServices,serviceDependencies)){
                 previouslySelectedServices = previouslySelectedServices.filter(item => item !== value)
             }
@@ -113,6 +115,7 @@ export function calculatePrice (selectedServices: ServiceType[], selectedYear: S
 
 function calculateBasePrice(selectedServices: ServiceType[], selectedYear: ServiceYear ,priceConfiguration: PriceConfiguration[]) {
     let basePrice = 0;
+    //Add up all service prices
     selectedServices.forEach(
         function (serviceType: ServiceType) {
             basePrice += getPriceFor(serviceType,selectedYear,priceConfiguration);
@@ -130,8 +133,11 @@ function getPriceFor(service: ServiceType,selectedYear: ServiceYear ,priceConfig
 
 function calculateFinalPrice(selectedServices: ServiceType[], selectedYear: ServiceYear, servicePackage: Package[], basePrice: number) {
     let finalPrice = basePrice;
+    //Gets all possible packages
     let packages = getPossiblePackagesForServices(selectedServices, selectedYear, servicePackage);
+    //Filter packages that collide with others, and choose greater discount
     packages = filterCollidedPackages(packages);
+    //Apply discount
     packages.forEach(x => {
         finalPrice -= x.discountValue;
     });
@@ -141,6 +147,7 @@ function calculateFinalPrice(selectedServices: ServiceType[], selectedYear: Serv
 function getPossiblePackagesForServices(selectedServices: ServiceType[], selectedYear: ServiceYear, servicePackages: Package[]) {
     let possiblePackages: Package[] = [];
     servicePackages.forEach(function(servicePackage: Package){
+        //Can package be applied for selected service? Check also if package already exist on list
         if(canApplyPackageToServices(servicePackage, selectedServices, selectedYear) && !packageAlreadyExists(servicePackage, possiblePackages))
         {
             possiblePackages.push(servicePackage);
@@ -179,6 +186,7 @@ function canApplyPackageToServices(servicePackage : Package, selectedServices: S
 
 function filterCollidedPackages(possiblePackages: Package[]) {
     let packageCollisions: PackageCollision[] = [];
+    //Enumerate packages and detect collisions
     possiblePackages.forEach(function(servicePackage: Package){
         let otherPackagers = possiblePackages.filter(x => x != servicePackage);
         let collisions = getPackagesCollision(servicePackage, otherPackagers);
@@ -193,8 +201,10 @@ function filterCollidedPackages(possiblePackages: Package[]) {
     });
     packageCollisions.forEach(x => 
     {
+        //Choose best package
         let result = getBestPackage(x);
         result.rest.forEach(x => {
+            //Remove packages that collides
             possiblePackages = possiblePackages.filter(a => a != x);
         })
     });
@@ -214,7 +224,6 @@ function packageCollisionAlreadyExists(packageCollision : PackageCollision ,pack
 
 function packageCollisionsAreEqual(packageCollisionA : PackageCollision, packageCollisionB : PackageCollision) {
     return packageCollisionA.collisions.some(x => packageCollisionB.collisions.some(y => compareRequiredServices(y.requiredServices,x.requiredServices)));
-   // return compareArrays(packageCollisionA.collisions, packageCollisionA.collisions);
 }
 
 function getPackagesCollision(servicePackage: Package, possiblePackages: Package[]) {
